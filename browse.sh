@@ -1,25 +1,17 @@
 #!/bin/bash
-command -v wget >/dev/null 2>&1 || { echo "Error: wget is required but not installed." >&2; exit 1; }
 
+set -e
 
-if [[ $# -eq 0 ]]; then
-    input_string=$(cat /dev/stdin)
-else
-    input_string="$*"
-fi
-ids_string=$(echo "$input_string" | tr ' ' '\n' | tr ',' '\n' | sed 's/[[:space:]]*and[[:space:]]*/\n/gi' | sed 's/[[:space:]]*και[[:space:]]*/\n/gi' | grep -v '^$' | sort -u)
+taxi=$(printf "Α' Λυκείου\nΒ' Λυκείου\nΓ' Λυκείου\n" | fzf)
+mathima=$(printf "Φυσική\nΦυσική Προσανατολισμού\nΧημεία\nΆλγεβρα\nΓεωμετρία\nΝεοελληνική Γλώσσα\nΛατινικά\nΝεοελληνική Λογοτεχνία\nΜαθηματικά Προσανατολισμού\nΟικονομία\nΙστορία\n" | fzf)
+thema=$(printf "1\n2\n3\n4\n" | fzf)
 
-while IFS= read -r doc_id; do
-    if ! [[ "$doc_id" =~ ^[0-9]+$ ]]; then
-        echo "Error: Invalid ID '$doc_id'"
-        exit 1
-    fi
-done <<< "$ids_string"
-
-mapfile -t ids < <(echo "$ids_string")
+sel=$(grep "/$taxi/$mathima/$thema" /home/asklipios/Trapeza-thematon-download-script/exercises_formatted.txt \
+  | sed 's#/.*##' | fzf -m)
+mapfile -t arr <<< "$sel"
 
 temp_files=()
-for doc_id in "${ids[@]}"; do
+for doc_id in "${arr[@]}"; do
     [ -z "$doc_id" ] && continue
     downloaded_file="document_${doc_id}.pdf"
     echo "Downloading thema: $doc_id..."
@@ -36,7 +28,7 @@ done
 if [ ${#temp_files[@]} -eq 1 ]; then
     merged_file="${temp_files[0]}"
 else
-    merged_file="docs-${ids[*]}.pdf"
+    merged_file="docs-${arr[*]}.pdf"
     merged_file="${merged_file// /-}"
     pdfunite "${temp_files[@]}" "$merged_file"
     rm -f "${temp_files[@]}"
@@ -44,4 +36,3 @@ fi
 
 tdf -m 1 "$merged_file"
 rm -f "$merged_file"
-
